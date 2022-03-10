@@ -31,10 +31,11 @@ playing = False  # Tells if something is playing or not
 chat_joined = False  # Tell if chat is joined or not
 
 # Pyrogram Client
-if not HEROKU:
-    app = Client("tgvc", api_id=api_id, api_hash=api_hash)
-else:
-    app = Client(SESSION_STRING, api_id=api_id, api_hash=api_hash)
+app = (
+    Client(SESSION_STRING, api_id=api_id, api_hash=api_hash)
+    if HEROKU
+    else Client("tgvc", api_id=api_id, api_hash=api_hash)
+)
 
 # Pytgcalls Client
 vc = GroupCall(app, input_filename="input.raw", play_on_repeat=True)
@@ -70,7 +71,7 @@ async def joinvc(_, message):
         chat_joined = True
         m = await send("__**Joined The Voice Chat.**__")
     except Exception as e:
-        print(str(e))
+        print(e)
         await send(str(e))
 
 
@@ -129,11 +130,11 @@ async def skip(_, message):
 @app.on_message(filters.command("queue") & filters.chat(sudo_chat_id))
 async def queue_list(_, message):
     if len(queue) != 0:
-        i = 1
-        text = ""
-        for song in queue:
-            text += f"**{i}. Platform:** __**{song['service']}**__ | **Song:** __**{song['song']}**__\n"
-            i += 1
+        text = "".join(
+            f"**{i}. Platform:** __**{song['service']}**__ | **Song:** __**{song['song']}**__\n"
+            for i, song in enumerate(queue, start=1)
+        )
+
         m = await send(text)
     else:
         m = await send("__**Queue Is Empty, Just Like Your Life.**__")
@@ -156,30 +157,27 @@ async def play():
                 try:
                     await ytplay(requested_by, song)
                 except Exception as e:
-                    print(str(e))
+                    print(e)
                     await send(str(e))
                     playing = False
-                    pass
             elif service == "saavn":
                 playing = True
                 del queue[0]
                 try:
                     await jiosaavn(requested_by, song)
                 except Exception as e:
-                    print(str(e))
+                    print(e)
                     await send(str(e))
                     playing = False
-                    pass
             elif service == "deezer":
                 playing = True
                 del queue[0]
                 try:
                     await deezer(requested_by, song)
                 except Exception as e:
-                    print(str(e))
+                    print(e)
                     await send(str(e))
                     playing = False
-                    pass
 
 
 # Deezer----------------------------------------------------------------------------------------
@@ -231,7 +229,7 @@ async def jiosaavn(requested_by, query):
         sduration_converted = convert_seconds(int(sduration))
     except Exception as e:
         await m.edit("__**Found No Song Matching Your Query.**__")
-        print(str(e))
+        print(e)
         playing = False
         return
     await m.edit("__**Processing Thumbnail.**__")
@@ -273,7 +271,7 @@ async def ytplay(requested_by, query):
     except Exception as e:
         await m.edit("__**Found No Song Matching Your Query.**__")
         playing = False
-        print(str(e))
+        print(e)
         return
     await m.edit("__**Processing Thumbnail.**__")
     await generate_cover(requested_by, title, views, duration, thumbnail)
